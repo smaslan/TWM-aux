@@ -61,7 +61,9 @@ cfg.H.v = 10;
 % verbose
 cfg.verbose.v = 0;
 % initial guess of the fundamental frequency (comment if autodetect needed)
-cfg.f0.v = 1e3;
+%cfg.f0.v = 1e3;
+% fix scalloping error?
+cfg.scallop_fix.v = 1;
 
 
 
@@ -71,8 +73,8 @@ sim.reps = 0;[1:10];
 % sampling rate [Hz]
 sim.fs = 50e3;
 % fundamental freq [Hz]
-%sim.f0 = 1.0e3;
-sim.f0 = cfg.f0.v;
+sim.f0 = 1.0e3;
+%sim.f0 = cfg.f0.v;
 
 % samples count
 sim.sample_count = round(sim.fs/sim.f0*200);
@@ -80,10 +82,10 @@ sim.sample_count = round(sim.fs/sim.f0*200);
 
 % fundamental freq [Hz] - sweep
 f_bin_step = sim.fs/sim.sample_count;
-sim.f0 = sim.f0 + 0.5*linspace(-f_bin_step,f_bin_step,100);
+sim.f0 = sim.f0 + 0.6*linspace(-f_bin_step,f_bin_step,51);
 
 % repeated measurements (averages) count
-sim.avg_count = 10;
+sim.avg_count = 3;
 % fundamental amplitude [V]
 sim.A0 = 0.9;
 % --- to generate:
