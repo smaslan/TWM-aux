@@ -12,7 +12,7 @@
 %%  info_str - information about fixed parameters setup: 'param_1_name = param_1_value, param_2_name = param_2_value, ...'   
 
 function [r,v,par_val,par_name,info_str] = var_get_results_vect(res,par,vr,varargin)
-  
+
   if(~length(varargin))
     %% parameter name undefined, search first vector parameter
     pid = find(vr.par_n>1,1,'first');
@@ -23,7 +23,7 @@ function [r,v,par_val,par_name,info_str] = var_get_results_vect(res,par,vr,varar
     end
 
   else
-    %% user defined paramter name, check whether exist in paramters list    
+    %% user defined paramter name, check whether exist in paramters list
     pid = find(strcmp(vr.names,varargin{1}),1,'first');
     
     if(~isscalar(pid))
@@ -33,13 +33,13 @@ function [r,v,par_val,par_name,info_str] = var_get_results_vect(res,par,vr,varar
               
   end
   
-  
   %% no filtering yet
   fil_mult = zeros(1,vr.n);
   fil_ofs = zeros(1,vr.n);
   
   %% process find filters
   if(length(varargin)>2)
+    
     %% function options: 'par_name_1', par_1_index, 'par_name_2', par_2_index, ... 
     varargin = {varargin{2:end}};
     

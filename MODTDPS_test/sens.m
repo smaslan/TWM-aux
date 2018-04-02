@@ -9,26 +9,31 @@ addpath([mfld filesep() 'var']);
 
 
 
-% maximum retries when non convergence or too high f deviation:
-s.cfg.max_try = 100;
-% max. f deviation from estimate [-]:
-s.cfg.max_f_dev = 500e-6;
-% ADC bit resolution:
-s.bits = unique(round(logspace(log10(4),log10(24),9)));
+% ADC bit resolution of the pk-pk amplitude:
+s.bits = unique(round(logspace(log10(4),log10(24),7)));
 % sampling time rms jitter [s]:
 s.jitt = 0;logspace(-9,-6,7);
-% fundamental frequency [Hz]:
-s.f0 = 1e3;
-% periods of fundamental harmonic:
-s.f0_per = 10;[10,20,50,100];
-% sampling rate ratio to f0 ratio:
-s.fs_rat = 10;logspace(log10(10),log10(1000),12);
+% modulate/carrier freq ratio:
+s.fmf0_rat = logspace(log10(0.01),log10(0.2),7);
+% modulating depth:
+s.modd = 0.5;
+% sampling rate to carrier freq ratio:
+s.fsf0_rat = logspace(log10(10),log10(100),3);
+% modulating wave shape:
+s.is_rect = 1;
+% self-compensate error:
+s.comp_err = 0;
+% periods count of the modulating signal:
+s.fm_per = logspace(log10(3),log10(30),7);
+% offset randomizing:
+s.ofs = 0.01;
 % sfdr values:
-s.sfdr = [180 140 120 100 80 60 40];
+s.sfdr = [120 60];
 % sfdr non harmonic:
 s.sfdr_nc = 1;
+ 
 % mcc:
-s.R = 400;
+s.R = 100;
 
 
 
@@ -52,17 +57,17 @@ mc_setup.method = 'multicore';
 mc_setup.ChunksPerProc = 0;
 % multicore options: jobs grouping for 'multicore'
 mc_setup.min_chunk_size = 1;
-mc_setup.max_chunk_count = 2000;
+mc_setup.max_chunk_count = 1000;
 mc_setup.share_fld = [mfld filesep() 'mc_rubbish'];
 mc_setup.run_master_only = 1;
 
 % --- process batch ---
-res = runmulticore(mc_setup.method,@proc_FPNLSF,p_list,mc_setup.cores,mc_setup.share_fld,2,mc_setup);
+res = runmulticore(mc_setup.method,@proc_MODTDPS,p_list,mc_setup.cores,mc_setup.share_fld,2,mc_setup);
 % update result count in jobs list
 vr.res_n = length(res);
 
 
-%save('test.mat','res','vr','p','s')
+save('rect_test.mat','res','vr','p','s')
 
 
 
