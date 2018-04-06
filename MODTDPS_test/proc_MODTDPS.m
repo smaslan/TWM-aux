@@ -1,5 +1,6 @@
 function [r] = proc_MODTDPS(p)
 
+    warning('off');
 
     if p.is_rect
         wshape = 'rect';
@@ -30,8 +31,8 @@ function [r] = proc_MODTDPS(p)
         % carrier amplitude:        
         A0 = 1;            
         
-        % carrier amplitude:        
-        Am = max(A0*p.modd*(1 + 0.05*(rand(1)-0.5)),0);
+        % modulating amplitude:        
+        Am = min(max(A0*p.modd*(1 + 0.05*(rand(1)-0.5)),0),0.99);
         
         % pk-pk amplitude:
         App = A0*(1 + p.modd);
@@ -90,15 +91,24 @@ function [r] = proc_MODTDPS(p)
         end
         
     end
-    
-    
+        
     r = struct();
     % return mc lists:
-    r.s_dofs = std(dofs);
-    r.s_df0 = std(df0);
-    r.s_dfm = std(dfm);
-    r.s_dA0 = std(dA0);
-    r.s_dmod = std(dmod);
+    r.l_dofs = dofs;
+    r.l_df0 = df0;
+    r.l_dfm = dfm;
+    r.l_dA0 = dA0;
+    r.l_dmod = dmod;
+    r.num = numel(dofs)
+    
+    if r.num > 2
+        r.s_dofs = est_scovint(dofs,0);
+        r.s_df0 = est_scovint(df0,0);
+        r.s_dfm = est_scovint(dfm,0);
+        r.s_dA0 = est_scovint(dA0,0);
+        r.s_dmod = est_scovint(dmod,0);    
+    end
+    
     r.m_dofs = mean(dofs);
     r.m_df0 = mean(df0);
     r.m_dfm = mean(dfm);

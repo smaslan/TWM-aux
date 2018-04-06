@@ -8,17 +8,20 @@ function [r] = proc_FPNLSF(p)
     dfx = [];
     for r = 1:p.R
     
+        % fundamental frequency [Hz]:
+        f0 = 1;
+    
         % sampling rate [Hz]:
-        fs = p.f0*(p.fs_rat + rand(1) - 0.5);
+        fs = f0*(p.fs_rat + rand(1) - 0.5);
         
         % samples count:
-        N = round(fs/p.f0*(p.f0_per + rand(1) - 0.5));
+        N = round(fs/f0*(p.f0_per + rand(1) - 0.5));
         
         % haropnic components:
         fh = [];
-        fh(1,:) = p.f0:p.f0:floor(0.4*fs);        
+        fh(1,:) = f0:f0:floor(0.4*fs);        
         if p.sfdr_nc
-            fh(2:end) = fh(2:end) + (rand(size(fh(2:end))) - 0.5)*p.f0;
+            fh(2:end) = fh(2:end) + (rand(size(fh(2:end))) - 0.5)*f0;
         end
         
         % randomize harmonic spurr values:        
@@ -26,14 +29,15 @@ function [r] = proc_FPNLSF(p)
                 
         % generate time vector:
         t = [];
-        t(:,1) = [0:N-1]/fs + p.jitt*randn(1,N);
+        t(:,1) = [0:N-1]/fs;
+        tj = t + p.jitt*randn(N,1); % include jitter
         
         % generate random phases of harmonics:
         phi = rand(size(fh))*2*pi;
         ph0 = phi(1);
         
         % synthesize waveform:
-        u = sum(A.*sin(2*pi*t.*fh + ph0),2);
+        u = sum(A.*sin(2*pi*tj.*fh + ph0),2);
         
         % add some random offset: 
         ofs = rand(1)/2^(p.bits-1);
@@ -98,20 +102,27 @@ function [r] = proc_FPNLSF(p)
     % 
     ids = ~(scores(dfx,2,0.9) | scores(dAx,2,0.9) | scores(dpx,2,0.9) | scores(dox,2,0.9));
     
-    m_dfx = mean(dfx(ids));
-    s_dfx = std(dfx(ids));    
-    m_dAx = mean(dAx(ids));
-    s_dAx = std(dAx(ids));    
-    m_dpx = mean(dpx(ids));
-    s_dpx = std(dpx(ids));
-    m_dox = mean(dox(ids));
-    s_dox = std(dox(ids));
-    
+    l_dfx = dfx(ids);
+    m_dfx = mean(l_dfx);
+    s_dfx = est_scovint(l_dfx,0);
+    l_dAx = dAx(ids);
+    m_dAx = mean(l_dAx);
+    s_dAx = est_scovint(l_dAx,0);
+    l_dpx = dpx(ids);    
+    m_dpx = mean(l_dpx);
+    s_dpx = est_scovint(l_dpx,0);
+    l_dox = dox(ids);        
+    m_dox = mean(l_dox);
+    s_dox = est_scovint(l_dox,0);
     
     r = struct();
     % info
     r.num = sum(ids);
     % return mc lists:
+    r.l_dpx = l_dpx;
+    r.l_dAx = l_dAx;
+    r.l_dfx = l_dfx;
+    r.l_dox = l_dox;
     r.s_dpx = s_dpx;
     r.s_dAx = s_dAx;
     r.s_dfx = s_dfx;
@@ -123,5 +134,4 @@ function [r] = proc_FPNLSF(p)
     
 
 end
-
 

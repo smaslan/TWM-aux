@@ -7,14 +7,14 @@ REM --- Cores count ---
 SET /a CORE_N=4
 
 REM --- GNU Octave path ---
-SET OCT_FLD=D:\Octave\Octave-4.2.2\bin\
+SET OCT_FLD=C:\Octave\Octave-4.2.0\bin\
 SET OCT_NAME=octave-cli.exe
 SET OCT_PATH=%OCT_FLD%\%OCT_NAME%
 
 REM --- Job share folder ---
-SET SHARE_FLD=mc_rubbish
-SET SHARE_PATH=%CD%\%SHARE_FLD%
-rem SET SHARE_PATH=M:\mc_rubbish
+rem SET SHARE_FLD=mc_rubbish
+rem SET SHARE_PATH=%CD%\%SHARE_FLD%
+SET SHARE_PATH=M:\pracovni\_MC_\mc_rubbish
 
 REM --- Options ---
 SET OPT=/BELOWNORMAL /B

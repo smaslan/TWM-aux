@@ -2,30 +2,34 @@
 ##
 
 ## -*- texinfo -*-
-## @deftypefn {Function File} @var{result} = runmulticore (@var{method}, @var{functionhandle}, @var{parametercell}, [@var{procno}, [@var{tmpdir}, [@var{verbose}, [@var{options}]]]])
+## @deftypefn {Function File} @var{res} = runmulticore (@var{method}, @var{funh}, @var{parc})
+## @deftypefnx {Function File} runmulticore (@var{method}, @var{funh}, @var{parc}, @var{procno}, @var{tmpdir})
+## @deftypefnx {Function File} runmulticore (@var{method}, @var{funh}, @var{parc}, @var{procno}, @var{tmpdir}, @var{verb})
+## @deftypefnx {Function File} runmulticore (@var{method}, @var{funh}, @var{parc}, @var{procno}, @var{tmpdir}, @var{verb}, @var{opt})
 ## Evaluate a function by parallel computing on multiple cores or computers by means of either
-## @emph{parallel} or @emph{multicore} Octave Forge packages,
+## @emph{parallel} or @emph{multicore} Octave packages,
 ## or use serial computing. It enables to easly change between
-## methods for easy debugging or running at different machines/octaves
-## with different installed packages.
+## methods for easy debugging or running at different machines/Octaves
+## with different installed packages. For now only one input and one output 
+## of function defined in @var{funh} is possible.
 ## @table @var
 ## @item method
-##    Set to 'cellfun' to disable parallelization
+##    Set to 'cellfun' to use only serial calculation.
 ##    Set to 'parcellfun' to use function 'parcellfun' from package 'general.
 ##    Set to 'multicore' to use function 'startmulticoremaster' from package 'general.
-## @item functionhandle
+## @item funh
 ##    Handle of the function to calculate (with at sign at the beginning).
-## @item parametercell
-##    Cell with parameters for function @var{functionhandle}.
+## @item parc
+##    Cell with parameters for function @var{funh}.
 ## @item procno
 ##    When specified, number of parallel processes will be limited. If ommited, set to 0, negative value or Inf, number of processes will be equal to number of local computer cores.
 ## @item tmpdir
 ##    When specified, temporary directory for function 'startmulticoremaster' will be set, otherwise temporary directory is given by octave function 'tempdir'. Not used for function 'parcellfun'.
-## @item result
-##    Cell of the same size as @var{parametercell} with all results.
-## @item verbose
+## @item res
+##    Cell of the same size as @var{parc} with all results.
+## @item verb
 ##    Verbose level. If equal to zero, messages will be supressed. Set 2 to get all messages.
-## @item options
+## @item opt
 ##    Structure with following fields:
 ##    @table @var
 ##    @item chunks_per_proc
@@ -38,31 +42,32 @@
 ##       (multicore only) Limits maximum job files count. Has higher priority than parameter min_chunk_size. Use 0 if you don't want to use this (default).
 ##    @item master_is_worker
 ##       (multicore only) If true, master process acts as worker and coordinator, if false the master acts only as coordinator.
+##    @item run_after_slaves
+##       (multicore only) Handle to function that will be run after slaves have been started. The input parameter of the function will be vector with process ids of the slaves.
 ##    @end table
 ## @end table
 ##
-## Example: compare calculation times:
+## Example 1: compare calculation times. Note overhead when using multicore.
 ## @example
-## for i=1:10
-##      paramcell@{i@}=i;
-## endfor
-## tic
-## res=runmulticore('cellfun', @@factorial, paramcell, 0, '.', 0);
-## toc
-## tic
-## res=runmulticore('parcellfun', @@factorial, paramcell, 0, '.', 0);
-## toc
-## tic
-## res=runmulticore('multicore', @@factorial, paramcell, 0, '.', 0);
-## toc
+## paramcell = num2cell(repmat(1,10,1));
+## tic; res=runmulticore('cellfun', @@mc_testfun, paramcell); toc
+## tic; res=runmulticore('parcellfun', @@mc_testfun, paramcell); toc
+## tic; res=runmulticore('multicore', @@mc_testfun, paramcell); toc
+## @end example
+##
+## Example 2: more complex use. Take a look into directory './multicore' during calculation.
+## @example
+## paramcell = num2cell(repmat(1,10,1));
+## opt.master_is_worker=false;
+## res=runmulticore('multicore', @@mc_testfun, paramcell, 2, '', 2, opt);
 ## @end example
 ## @end deftypefn
 
 
 ## Author: Martin Šíra <msiraATcmi.cz>
 ## Created: 2010
-## Version: 1.2
-## Keywords: cellfun parcellfun mutlicore
+## Version: 1.4
+## Keywords: cellfun parcellfun multicore
 ## Script quality:
 ##   Tested: yes
 ##   Contains help: yes
@@ -116,19 +121,18 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
         % determine number of processes: %<<<2
         if ( procno==inf || procno<1 )
                 % detect number of cpus:
-                % correctly should be: (doesn't work in octave 3.2):
-                %cpus=nproc
-                % else use following:
-                if isunix
-                        % unix os
-                        pid = fopen("/proc/cpuinfo"); 
-                        procno = length(strfind(char(fread(pid)'),"processor")); 
-                        fclose(pid);
-                else 
-                        % expecting windows:
-                        [status output]=system("echo %number_of_processors%"); 
-                        procno=str2num(output);
-                endif
+                cpus=nproc;
+                % previous line doesn't work in octave 3.2, one have to use following:
+                % if isunix
+                        % % unix os
+                        % pid = fopen("/proc/cpuinfo"); 
+                        % procno = length(strfind(char(fread(pid)'),"processor")); 
+                        % fclose(pid);
+                % else 
+                        % % expecting windows:
+                        % [status output]=system("echo %number_of_processors%"); 
+                        % procno=str2num(output);
+                % endif
         endif
 
         % options default values: %<<<2
@@ -137,6 +141,7 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
         MinChunkSize = 1;
         MaxChunkCount = 0;
         MasterIsWorker = 1;
+        run_after_slaves = '';
         if (nargin == 7)
                 if ~isstruct(options)
                         error('`options` must be a structure')
@@ -156,23 +161,8 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
                 if(isfield(options,'master_is_worker'))
                         MasterIsWorker = options.master_is_worker;
                 endif
-        endif
-
-        % determine number of processes: --------------------------- %<<<1
-        if ( procno==inf || procno<1 )
-                % detect number of cpus:
-                % correctly should be: (doesn't work in octave 3.2):
-                %cpus=nproc
-                % else use following:
-                if isunix
-                        % unix os
-                        pid = fopen("/proc/cpuinfo"); 
-                        procno = length(strfind(char(fread(pid)'),"processor")); 
-                        fclose(pid);
-                else 
-                        % expecting windows:
-                        [status output]=system("echo %number_of_processors%"); 
-                        procno=str2num(output);
+                if(isfield(options,'run_after_slaves'))
+                        run_after_slaves = options.run_after_slaves;
                 endif
         endif
 
@@ -180,31 +170,56 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
         % cellfun: --------------------------- %<<<2
         if strcmp(method,"cellfun")
                 % use non parallel computing by means of cellfun:
+                % XXX vadne pro vice vstupu, cell of cells se nerozlozi!:
                 result=cellfun(functionhandle, parametercell, "UniformOutput", false);
 
         % parcellfun: --------------------------- %<<<2
         elseif strcmp(method,"parcellfun")
                 % use package general and function parcellfun by J.Hajek:
+                % XXX vadne pro vice vstupu, cell of cells se nerozlozi!:
                 result=parcellfun(procno, functionhandle, parametercell, "VerboseLevel", verbose, "UniformOutput", false, "ChunksPerProc", ChunksPerProc);
 
         % multicore --------------------------- %<<<2
         elseif strcmp(method,"multicore")
                 % use package multicore and function startmulticoremaster by Markus Buehren and Stanislav Maslan:
                 % run slave processes: % ----------------------- %<<<3
+                if (verbose > 1) disp('Starting background processes ...') endif
                 if ~OnlyMaster
                         for i=1:procno-1
-                                [fidIn(i), fidOut(i), fidPid(i)] = popen2 ("octave-cli", "-q");
-                                input_str = ["startmulticoreslave('",tmpdir,"');"];
-                                fputs (fidIn, input_str);
-                                fputs (fidIn, sprintf('\n'));
-                                % for windows try to set process priority to 
-                                % "below normal" otherwise windows would be unusable:
-                                if(ispc())
+                                if isunix
+                                        % make command starting octave, loading package multicore if needed and starting slave:
+                                        command = ["octave-cli --eval \"" ...
+                                                   "if ~exist(\'startmulticoreslave\'); pkg load multicore; endif; " ...
+                                                   "startmulticoreslave(\'" tmpdir "\');" ...
+                                                   "\""];
+                                        % if (verbose > 1) disp(['Starting background process ' num2str(i) ' by command: ' command]) endif
+                                        % stdout and stderr are sent to /dev/null, ampersand runs it in background, echo $! prints out process pid:
+                                        [sout, stxt] = system([command " > /dev/null 2>&1 & echo $!"]);
+                                        % readout pid:
+                                        fidPid(i) = str2num(stxt);
+                                        % if (verbose > 1) disp(['Pid is: ' num2str(fidPid(i))]) endif
+                                else
+                                        if (verbose > 1) disp(['Starting background process ' num2str(i) ' by command: ' command]) endif
+                                        [fidIn(i), fidOut(i), fidPid(i)] = popen2 ("octave-cli", "-q");
+                                        if (verbose > 1) disp(['Pid is: ' num2str(fidPid(i))]) endif
+                                        input_str = ["if ~exist('startmulticoreslave'); pkg load multicore; endif; " ...
+                                                     "startmulticoreslave('" tmpdir "');"];
+                                        fputs (fidIn(i), input_str);
+                                        fputs (fidIn(i), sprintf('\n'));
+                                        % for windows try to set process priority to 
+                                        % "below normal" otherwise windows would be unusable:
                                         syscmd = ['cmd /Q /C "wmic process where handle=' int2str(fidPid(i)) ' CALL SetPriority "Below Normal" "'];
                                         [sout,stxt] = system(syscmd);
                                 endif
                         endfor
                 endif % OnlyMaster
+
+                % run user function after slaves have been started: % ----------------------- %<<<3
+                if ~isempty(run_after_slaves)
+                        if (verbose > 1) disp('Running user function:'); disp(run_after_slaves) endif
+                        feval(run_after_slaves, fidPid, 0);
+                        if (verbose > 1) disp('User function finished.') endif
+                endif
 
                 % run master % ----------------------- %<<<3
                 % prepare settings structure:
@@ -234,9 +249,6 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
                                         % (cannot use 'WNOHANG, otherwise it is too 
                                         % fast and zombies stays in memory
                                         waitpid(fidPid(i));
-                                        % close streams:
-                                        fclose(fidIn(i));
-                                        fclose(fidOut(i));
                                 endif
                         endfor % i
                 endif % ~OnlyMaster
@@ -245,34 +257,22 @@ endfunction
 
 % --------------------------- tests: %<<<1
 
-%!shared res, result, method, functionhandle, parametercell, procno, tmpdir, verbose
+%!shared i, parc, funh, procno, tmpdir, verbose, result
 %! for i=1:10
-%!      parametercell{i}=i;
+%!      parc{i}=0.2;
 %! endfor
-%! functionhandle=@factorial;
+%! funh=@mc_testfun;
 %! procno=0;
-%! tmpdir='~';
+%! tmpdir='.';
 %! verbose=0;
-%! result={};
-%! result=runmulticore('cellfun', functionhandle, parametercell, procno, tmpdir, verbose);
-%! res=0;
-%! for i=1:10
-%!      res=res+result{i};
-%! endfor
-%!assert(res,4037913)
-%! result={};
-%! result=runmulticore('parcellfun', functionhandle, parametercell, procno, tmpdir, verbose);
-%! res=0;
-%! for i=1:10
-%!      res=res+result{i};
-%! endfor
-%!assert(res,4037913)
-%! result={};
-%! result=runmulticore('multicore', functionhandle, parametercell, procno, tmpdir, verbose);
-%! res=0;
-%! for i=1:10
-%!      res=res+result{i};
-%! endfor
-%!assert(res,4037913)
+%! result = {};
+%! result=runmulticore('cellfun', funh, parc, procno, tmpdir, verbose);
+%!assert(sum([result{:}]), sum([parc{:}]))
+%! result = {};
+%! result=runmulticore('parcellfun', funh, parc, procno, tmpdir, verbose);
+%!assert(sum([result{:}]), sum([parc{:}]))
+%! result = {};
+%! result=runmulticore('multicore', funh, parc, procno, tmpdir, verbose);
+%!assert(sum([result{:}]), sum([parc{:}]))
 
 % vim settings modeline: vim: foldmarker=%<<<,%>>> fdm=marker fen ft=octave textwidth=1000

@@ -23,7 +23,7 @@ function [outp] = var_get_all(par,vr,step,verbose)
       k += pl;
       
       if(verbose)
-        printf('Generating parameter combinations ... %3d%%\r',100*outp(k-1)._vpid_/outp(k-1)._vpcnt_);
+        printf('Generating parameter combinations ... %3.0f%%  \r',100*outp(k-1)._vpid_/outp(k-1)._vpcnt_);
       endif          
     endwhile
           
