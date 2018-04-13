@@ -8,7 +8,7 @@ addpath([mfld filesep() 'var']);
 disp('Loading data...');
 
 % load results:
-load('test.matsc');
+load('test.matsc','-mat');
 
 disp('Preprocessing data...');
 

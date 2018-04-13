@@ -107,7 +107,7 @@ function [lut] = make_lut(res,p,vr,ax,qu)
         if ~any(vid)
             error(sprintf('Axis ''%s'' not found in the axes configuration list ''ax''!',v_names{k}));            
         end
-        m--;
+        m = m - 1;
         
         % get axis:
         arec = getfield(ax,v_names{k});
@@ -140,16 +140,19 @@ function [lut] = make_lut(res,p,vr,ax,qu)
         name = q_names{k};
         
         disp(sprintf('Processing quantity ''%s'' (%d of %d)',name,k,Q));
-    
+        
         % get the quantity element from each cell:
-        try 
-            data = cellfun(@getfield,res,{name});
+        
+        try
+            %  note: crippled for Matlab compatibility 
+            data = cellfun(@getfield,res,repmat({name},size(res)));
         catch
             error(sprintf('Quantity ''%s'' not found in the calculated data!',name));
         end
                
         % shape the data to N-dim array matching the data orientation:
-        data = reshape(data,adims);
+        %  note: crippled for Matlab compatibility
+        data = reshape(data,reshape(adims,[1 numel(adims)]));
         
         % -- compression:
         % convert to log-scale:
@@ -175,7 +178,8 @@ function [lut] = make_lut(res,p,vr,ax,qu)
         % try to decode back to original values:
         b_data = 10.^(double(c_data)*qu_rec.data_scale + qu_rec.data_offset);
         % calculate deviation of the compressed data:
-        dev = max(abs(b_data./data-1)(:));
+        dev = abs(b_data./data-1);
+        dev = max(dev(:));
         
         % store the quantity back to LUT:
         lut.qu = setfield(lut.qu,name,qu_rec);

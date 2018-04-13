@@ -116,7 +116,7 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
         if ~any(vid)
             error(sprintf('Axis ''%s'' not found in the axes configuration list ''ax''!',v_names{k}));            
         end
-        m--;
+        m = m - 1;
         
         % get axis:
         arec = getfield(ax,v_names{k});
@@ -149,16 +149,19 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
         name = q_names{k};
         
         disp(sprintf('Processing quantity ''%s'' (%d of %d)',name,k,Q));
-    
+        
         % get the quantity element from each cell:
-        try 
-            data = cellfun(@getfield,res,{name});
+        
+        try
+            %  note: crippled for Matlab compatibility 
+            data = cellfun(@getfield,res,repmat({name},size(res)));
         catch
             error(sprintf('Quantity ''%s'' not found in the calculated data!',name));
         end
                
         % shape the data to N-dim array matching the data orientation:
-        data = reshape(data,adims);
+        %  note: crippled for Matlab compatibility
+        data = reshape(data,reshape(adims,[1 numel(adims)]));
         
         % get quantity record:
         qu_rec = getfield(lut.qu,name);
@@ -204,8 +207,7 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
             qu_rec.data_mode = fmt;             
             
         end
-        
-        
+                
         % store the quantity back to LUT:
         lut.qu = setfield(lut.qu,name,qu_rec);
             
