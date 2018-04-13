@@ -1,4 +1,4 @@
-function [lut] = make_lut(res,p,vr,ax,qu)
+function [lut] = make_lut(res,p,vr,ax,qu,fmt)
 % Simple generator of multidim lookup table (LUT) based on the data from 
 % 'var_' functions (automatic variation of N-dim parameter space).
 %
@@ -58,7 +58,12 @@ function [lut] = make_lut(res,p,vr,ax,qu)
 %                           when the quantity changes over many decades. Default
 %                           is 'lin'.
 %          quantity.mult - optional multiplier of the quantity after interpolation.
-%                          default is 1.0.   
+%                          default is 1.0.
+%   fmt - data compression format {'real' - no compression, 
+%                                  'log10u16' - log10, then scale to uint16 (default), 
+%                                  'log10u8' - guess once...}
+%       - note the integer conversion will of course limit accuracy but it was made 
+%         for uncertainty, so two digits is enough    
 %
 % Returns:
 %   lut - lookup table structure:
@@ -85,6 +90,10 @@ function [lut] = make_lut(res,p,vr,ax,qu)
 % (c) 2018, Stanislav Maslan, smaslan@cmi.cz
 % The script is distributed under MIT license, https://opensource.org/licenses/MIT
 
+    if ~exist('fmt','var')
+        fmt = 'log10u16';
+    end
+    
     % get required axes:
     ax_names = fieldnames(ax);
     A = numel(ax_names);
@@ -151,31 +160,51 @@ function [lut] = make_lut(res,p,vr,ax,qu)
         % shape the data to N-dim array matching the data orientation:
         data = reshape(data,adims);
         
-        % -- compression:
-        % convert to log-scale:
-        c_data = log10(data);
-        
-        % detect range:
-        qu_min = min(c_data(:));
-        qu_max = max(c_data(:));
-        
-        % rescale to uint16:
-        int_max = 2^16 - 1;                
-        c_data = uint16(round(int_max*(c_data - qu_min)/(qu_max - qu_min)));
-                
         % get quantity record:
         qu_rec = getfield(lut.qu,name);
         
-        % store data and scaling factors:
-        qu_rec.data = c_data;
-        qu_rec.data_scale = (qu_max - qu_min)/int_max;
-        qu_rec.data_offset = qu_min;
-        qu_rec.data_mode = 'log10u16';
+        % -- compression:
+        if ~strcmpi(fmt,'real')
+            % -- compressed format:
+
+            % convert to log-scale:
+            c_data = log10(data);
+            
+            % detect range:
+            qu_min = min(c_data(:));
+            qu_max = max(c_data(:));
+                
+            % rescale:
+            if strcmpi(fmt,'log10u16')
+                int_max = 2^16 - 1;
+                c_data = uint16(round(int_max*(c_data - qu_min)/(qu_max - qu_min)));
+            else
+                int_max = 2^8 - 1;
+                c_data = uint8(round(int_max*(c_data - qu_min)/(qu_max - qu_min)));
+            end
+            
         
-        % try to decode back to original values:
-        b_data = 10.^(double(c_data)*qu_rec.data_scale + qu_rec.data_offset);
-        % calculate deviation of the compressed data:
-        dev = max(abs(b_data./data-1)(:));
+            % store data and scaling factors:
+            qu_rec.data = c_data;
+            qu_rec.data_scale = (qu_max - qu_min)/int_max;
+            qu_rec.data_offset = qu_min;
+            qu_rec.data_mode = fmt;
+            
+            % try to decode back to original values:
+            b_data = 10.^(double(c_data)*qu_rec.data_scale + qu_rec.data_offset);
+            % calculate deviation of the compressed data:
+            dev = max(abs(b_data./data-1)(:));
+            
+        else
+            % --- real format:
+            
+            qu_rec.data = data;
+            qu_rec.data_scale = 1;
+            qu_rec.data_offset = 0;
+            qu_rec.data_mode = fmt;             
+            
+        end
+        
         
         % store the quantity back to LUT:
         lut.qu = setfield(lut.qu,name,qu_rec);

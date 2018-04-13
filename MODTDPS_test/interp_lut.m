@@ -182,9 +182,9 @@ function [val] = interp_lut(lut,ax,res)
         qu = getfield(lut.qu, q_name);
         
         % decode data:
-        if strcmpi(qu.data_mode,'log10u16')
+        if strcmpi(qu.data_mode,'log10u16') || strcmpi(qu.data_mode,'log10u8')
             % decode log()+uint16 format:
-            data = 10.^(double(qu.data)*qu.data_scale + qu.data_offset);
+            data = 10.^(double(qu.data)*qu.data_scale + qu.data_offset);        
         elseif strcmpi(qu.data_mode,'real')
             % unscaled data:
             data = double(qu.data);

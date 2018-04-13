@@ -9,26 +9,32 @@ addpath([mfld filesep() 'var']);
 
 warning('off');
 
-id = 1;
+id = 0;
+
+id++;
 cfg{id}.name = 'Sine - corrections';
 cfg{id}.file = 'sine_corr.matsc';
 cfg{id}.is_rect = 0;
 cfg{id}.comp_err = 1;
 
-id++;
-cfg{id}.name = 'Sine - no corrections';
-cfg{id}.file = 'sine_ncorr.matsc';
-cfg{id}.is_rect = 0;
-cfg{id}.comp_err = 0;
-
-id++;
-cfg{id}.name = 'Rectangular - no corrections';
-cfg{id}.file = 'rect_ncorr.matsc';
-cfg{id}.is_rect = 1;
-cfg{id}.comp_err = 0;
+% id++;
+% cfg{id}.name = 'Sine - no corrections';
+% cfg{id}.file = 'sine_ncorr.matsc';
+% cfg{id}.is_rect = 0;
+% cfg{id}.comp_err = 0;
+% 
+% id++;
+% cfg{id}.name = 'Rectangular - no corrections';
+% cfg{id}.file = 'rect_ncorr.matsc';
+% cfg{id}.is_rect = 1;
+% cfg{id}.comp_err = 0;
 
 
 for k = 1:numel(cfg)
+
+    clear res;
+    clear p;
+
 
     disp(['Running: ' cfg{k}.name]);
 
@@ -62,27 +68,22 @@ for k = 1:numel(cfg)
     
     % --- initialize simulator/generate jobs ---
     [vr,p] = var_init(s);
-    if vr.var_n == 1
-        % enable spectrum logging if only one simulation enabled
-        s.save_spec = 1;
-        p.s = s;
-        % reinit simulator structure
-        [vr,p] = var_init(p);
-    endif
-    p_list = var_get_all(p,vr,5000,1);
+    p_list = var_get_all_fast(p,vr,5000,1);
+    
+    return
     
     fprintf('Count: %d\n',numel(p_list));
     
     % --- multicore setup ---
     % multicore cores count
-    mc_setup.cores = 176;
+    mc_setup.cores = 200;
     % multicore method {'cellfun','parcellfun','multicore'}
     mc_setup.method = 'multicore';
     % multicore options: jobs grouping for 'parcellfun' 
     mc_setup.ChunksPerProc = 0;
     % multicore options: jobs grouping for 'multicore'
     mc_setup.min_chunk_size = 1;
-    mc_setup.max_chunk_count = 10000;
+    mc_setup.max_chunk_count = 50000;
     mc_setup.share_fld = [mfld filesep() 'mc_rubbish'];
     mc_setup.run_master_only = 0;
     mc_setup.master_is_worker = 0;
@@ -94,7 +95,7 @@ for k = 1:numel(cfg)
     vr.res_n = length(res);
     
     
-    save(cfg{k}.file,'-v7','res','vr','p','s');
+%    save(cfg{k}.file,'-v6','res','vr','p','s');
 
 end
 

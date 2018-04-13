@@ -36,8 +36,6 @@
 ##       (parcellfun only) Control the number of chunks which contains elementary jobs.  This option particularly useful when time execution of function is small.
 ##    @item run_master_only
 ##       (multicore only) Slave processes will not be started. Usefull if user needs to control running of octave processes with 'startmulticoreslave'.
-##    @item run_slaves_only
-##       (multicore only) Only slave processes will be started. This is usefull when you need to run slave processes on background manually before or during processing.
 ##    @item min_chunk_size
 ##       (multicore only) Number of function evaluations gathered to a single job.
 ##    @item max_chunk_count
@@ -140,7 +138,6 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
         % options default values: %<<<2
         ChunksPerProc = 1;
         OnlyMaster = 0;
-        OnlySlaves = 0;
         MinChunkSize = 1;
         MaxChunkCount = 0;
         MasterIsWorker = 1;
@@ -151,9 +148,6 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
                 endif
                 if(isfield(options,'chunks_per_proc'))
                         ChunksPerProc = options.chunks_per_proc;
-                endif
-                if(isfield(options,'run_slaves_only'))
-                        OnlySlaves = options.run_slaves_only;
                 endif
                 if(isfield(options,'run_master_only'))
                         OnlyMaster = options.run_master_only;
@@ -226,41 +220,38 @@ function result=runmulticore(method, functionhandle, parametercell, procno, tmpd
                         feval(run_after_slaves, fidPid, 0);
                         if (verbose > 1) disp('User function finished.') endif
                 endif
-                
-                if ~OnlySlaves
 
-                        % run master % ----------------------- %<<<3
-                        % prepare settings structure:
-                        settings.nrOfEvalsAtOnce = MinChunkSize;
-                        settings.maxJobFiles = MaxChunkCount;
-                        settings.multicoreDir = tmpdir;    
-                        settings.masterIsWorker = MasterIsWorker;
-                        settings.moreTalk = verbose;
-                        % run it:
-                        result = startmulticoremaster(functionhandle, parametercell, settings);
-        
-                        % Close the secondary process % ----------------------- %<<<3
-                        % should be used: 
-                        % correctly should be: (doesn't work in octave 3.2):
-                        %pclose(fidPid(i))
-                        % else use following (leave zombies):
-                        if ~OnlyMaster
-                                for i=1:procno-1
-                                        if(ispc())
-                                                % windows - kill by system command, pclose() not yet implemented 
-                                                syscmd=['taskkill /F /PID ' int2str(fidPid(i))];
-                                                [sout,stxt] = system(syscmd);
-                                        else
-                                                % kill octave processes immediately:
-                                                [err, msg] = kill (fidPid(i), 9);
-                                                % clear zombies by reading output status:
-                                                % (cannot use 'WNOHANG, otherwise it is too 
-                                                % fast and zombies stays in memory
-                                                waitpid(fidPid(i));
-                                        endif
-                                endfor % i
-                        endif % ~OnlyMaster
-                endif
+                % run master % ----------------------- %<<<3
+                % prepare settings structure:
+                settings.nrOfEvalsAtOnce = MinChunkSize;
+                settings.maxJobFiles = MaxChunkCount;
+                settings.multicoreDir = tmpdir;    
+                settings.masterIsWorker = MasterIsWorker;
+                settings.moreTalk = verbose;
+                % run it:
+                result = startmulticoremaster(functionhandle, parametercell, settings);
+
+                % Close the secondary process % ----------------------- %<<<3
+                % should be used: 
+                % correctly should be: (doesn't work in octave 3.2):
+                %pclose(fidPid(i))
+                % else use following (leave zombies):
+                if ~OnlyMaster
+                        for i=1:procno-1
+                                if(ispc())
+                                        % windows - kill by system command, pclose() not yet implemented 
+                                        syscmd=['taskkill /F /PID ' int2str(fidPid(i))];
+                                        [sout,stxt] = system(syscmd);
+                                else
+                                        % kill octave processes immediately:
+                                        [err, msg] = kill (fidPid(i), 9);
+                                        % clear zombies by reading output status:
+                                        % (cannot use 'WNOHANG, otherwise it is too 
+                                        % fast and zombies stays in memory
+                                        waitpid(fidPid(i));
+                                endif
+                        endfor % i
+                endif % ~OnlyMaster
         endif
 endfunction
 
