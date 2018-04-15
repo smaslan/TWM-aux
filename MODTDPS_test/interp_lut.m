@@ -78,7 +78,7 @@ function [val] = interp_lut(lut,ax,res)
     
     % for each axis of dependence:
     for a = 1:A
-    
+        
         % get axis name:
         a_name = ax_names{a};
     
@@ -123,6 +123,7 @@ function [val] = interp_lut(lut,ax,res)
         elseif ~strcmpi(cax.scale,'lin')
             error(sprintf('Uncertainty estimator: Interpolation mode of axis ''%s'' is unknown! Possibly incorrect lookup data.',a_name));
         end
+        
         
         % create axis interpolation mask:
         wa = zeros(size(vax));
@@ -170,7 +171,9 @@ function [val] = interp_lut(lut,ax,res)
         wa = repmat(wa,rdim);
         
         % combine the mask with previous axes:
-        w = bsxfun(@times,w,wa);            
+        
+        w = bsxfun(@times,w,wa);
+                    
         
     end
     
@@ -189,13 +192,20 @@ function [val] = interp_lut(lut,ax,res)
         % decode data:
         if strcmpi(qu.data_mode,'log10u16') || strcmpi(qu.data_mode,'log10u8')
             % decode log()+uint16 format:
-            data = 10.^(double(qu.data)*qu.data_scale + qu.data_offset);        
+            data = 10.^(double(qu.data)*qu.data_scale + qu.data_offset);
+            % detect NaNs:
+            if strcmpi(qu.data_mode,'log10u16')
+                is_nan = (qu.data == 65535);
+            else
+                is_nan = (qu.data == 255);
+            end
+            data(is_nan) = NaN;        
         elseif strcmpi(qu.data_mode,'real')
             % unscaled data:
             data = double(qu.data);
         else
             error(sprintf('Uncertainty estimator: Precalculated values of quantity ''%s'' stored in unknown format ''%s''! Possibly invalid lookup table content.',q_name,qu.data_mode));
-        end        
+        end
         
         % convert quantity before interpolation:
         is_log = 0;
@@ -203,12 +213,21 @@ function [val] = interp_lut(lut,ax,res)
             is_log = 1;
             data = log10(data);
         elseif isfield(qu,'scale') && ~strcmpi(qu.scale,'lin')
-            error(sprintf('Uncertainty estimator: Precalculated values of quantity ''%s'' cannot be coverted to ''%s'' - unknown operation (only ''lin'' or ''log'')! Possibly invalid lookup table content.',q_name,qu.scale));
+            error(sprintf('Uncertainty estimator: Precalculated values of quantity ''%s'' cannot be converted to ''%s'' - unknown operation (only ''lin'' or ''log'')! Possibly invalid lookup table content.',q_name,qu.scale));
+        end
+        
+         
+        
+        % check validity of data:
+        if any(isnan(data(w > 1e-3)))
+            error(sprintf('Uncertainty estimator: Precalculated values of quantity ''%s'' are not available for requested combination of parameters!',q_name));
         end
         
         % interplate using the weight mask:
-        data = data.*w;
-        data = sum(data(:))/sum(w(:));
+        data = data(:).*w(:);        
+        wt = w(~isnan(data));
+        data = data(~isnan(data));
+        data = sum(data(:))/sum(wt(:));
         
         % convert back to state before interp.:
         if is_log
@@ -221,7 +240,8 @@ function [val] = interp_lut(lut,ax,res)
         end
         
         % store interpolated quantity:
-        val = setfield(val, q_name, struct('val',data));        
+        val = setfield(val, q_name, struct('val',data));
+                       
     
     end
 
@@ -324,7 +344,7 @@ function [] = interp_lut_test(lut,res)
         qu = struct();    
         qu.q1.scale = 'log';
         qu.q2.scale = 'lin';
-        qu.q1.mult = 1.0;
+        qu.q1.mult = 1.5;
         qu.q2.mult = 1.0;
         qu_names = fieldnames(qu);
         Q = numel(qu_names);
@@ -341,41 +361,64 @@ function [] = interp_lut_test(lut,res)
     max_eps = 0.001;
     
     
+    % get vector of quantity multipliers:
+    mult = ones(Q,1);
+    for k = 1:Q
+       qur = getfield(lut.qu,qu_names{k});
+       if isfield(qur,'mult')
+           mult(k) = qur.mult;
+       end            
+    end
+    
+    % preload axes:
+    ax_vecs = {};
+    for a = 1:numel(vr.par_n)
+        axv = getfield(lut.ax,vr.names{a});
+        ax_vecs{a} = axv.values;
+    end
+    
+       
     % -- random spot testing loop:
     tid = tic();
     devs = zeros(size(qu_names));
+    ax = struct();
+    is_nan = 0;    
     for t = 1:T
         
         % select random spot from results-data vector:
         rid = round(rand(1)*(R-1));
         rid_tmp = rid;
-        % decompose the random selection to axes and build interpolator values 'ax':
-        ax = struct();
+        % decompose the random selection to axes and build interpolator values 'ax':        
         for a = numel(vr.par_n):-1:1
             sz = prod(vr.par_n(1:a-1));
             axi = floor(rid_tmp/sz);
             rid_tmp = rem(rid_tmp,sz);            
-            axv = getfield(lut.ax,vr.names{a});
-            ax = setfield(ax,vr.names{a},struct('val',axv.values(axi+1)));
+            axv = ax_vecs{a};
+            ax = setfield(ax,vr.names{a},struct('val',axv(axi+1)));
         end
         
-        % interpolate LUT:
-        val = interp_lut(lut,ax);
+        % interpolate LUT:        
+        try
+            val = interp_lut(lut,ax);
+            
+            % check deviation of the intrepolated data from originals:
+            for k = 1:Q
+                int = getfield(val,qu_names{k});            
+                ref = getfield(res{rid+1},qu_names{k})*mult(k);
+                devs(k) = max(devs(k),abs((int.val/ref-1)));        
+            end
+            
+            if toc(tid) > 1
+                tid = tic();        
+                fprintf(' testing %6d of %6d (%1d NaNs)            \r',t,T,is_nan);
+            end
         
-        % check deviation of the intrepolated data from originals:
-        for k = 1:Q
-            int = getfield(val,qu_names{k});            
-            ref = getfield(res{rid+1},qu_names{k});
-            devs(k) = max(devs(k),abs((int.val/ref-1)));        
-        end
-        
-        if toc(tid) > 1
-            tid = tic();        
-            fprintf(' testing %6d of %6d          \r',t,T);
+        catch            
+            is_nan = is_nan + 1;    
         end
                                     
     end
-    fprintf(' testing %6d of %6d          \n',t,T);
+    fprintf(' testing %6d of %6d (%1d NaNs)           \n',t,T,is_nan);
     
     % print found deviations:
     for k = 1:Q

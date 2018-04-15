@@ -8,19 +8,19 @@ addpath([mfld filesep() 'var']);
 disp('Loading data...');
 
 % load results:
-load('sine_corr_min.matsc');
+%load('sine_corr_min.matsc','-mat');
 
 disp('Preprocessing data...');
 
 % merge deviations and uncertainties:
-rr = {struct()};
-for k = 1:numel(res)   
-   rr{k}.dofs = res{k}.s_dofs;
-   rr{k}.df0 = res{k}.s_df0;
-   rr{k}.dfm = res{k}.s_dfm;
-   rr{k}.dA0 = res{k}.s_dA0;
-   rr{k}.dmod = res{k}.s_dmod;   
-end
+% rr = {struct()};
+% for k = 1:numel(res)   
+%    %rr{k}.dofs = res{k}.s_dofs;
+%    rr{k}.df0 = res{k}.s_df0;
+%    rr{k}.dfm = res{k}.s_dfm;
+%    rr{k}.dA0 = res{k}.s_dA0;
+%    rr{k}.dmod = res{k}.s_dmod;   
+% end
 
 disp('Building LUT...');
 
@@ -72,16 +72,21 @@ ax.sfdr.scale = 'lin';
 
 % define quantities interpolation behaviour:
 qu = struct();
-qu.dofs.mult = 1.0; 
-qu.dofs.scale = 'log';
-qu.df0.mult = 1.0;
+%qu.dofs.mult = 1.5; 
+%qu.dofs.scale = 'log';
+%qu.dofs.vmax = inf;
+qu.df0.mult = 1.5;
 qu.df0.scale = 'log';
-qu.dfm.mult = 1.0;
+qu.df0.vmax = 1.0;
+qu.dfm.mult = 1.5;
 qu.dfm.scale = 'log';
-qu.dA0.mult = 1.0;
+qu.dfm.vmax = 1.0;
+qu.dA0.mult = 1.5;
 qu.dA0.scale = 'log';
-qu.dmod.mult = 1.0;
+qu.dA0.vmax = 1.0;
+qu.dmod.mult = 1.5;
 qu.dmod.scale = 'log';
+qu.dmod.vmax = 1.0;
 
 lut = make_lut(rr,p,vr,ax,qu);
 

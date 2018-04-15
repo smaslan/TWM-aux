@@ -99,7 +99,7 @@ function [r] = proc_MODTDPS(p)
     r.l_dfm = dfm;
     r.l_dA0 = dA0;
     r.l_dmod = dmod;
-    r.num = numel(dofs)
+    r.num = numel(dofs);
     
     if r.num > 2
         r.s_dofs = est_scovint(dofs,0);

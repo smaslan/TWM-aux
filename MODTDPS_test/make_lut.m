@@ -166,6 +166,16 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
         % get quantity record:
         qu_rec = getfield(lut.qu,name);
         
+        % detect over range values:
+        if isfield(qu_rec,'vmax')
+            is_max = abs(data) > qu_rec.vmax;
+        else
+            is_max = zeros(size(data));
+        end
+        
+        % get rid of overranges:
+        data(is_max) = NaN; 
+        
         % -- compression:
         if ~strcmpi(fmt,'real')
             % -- compressed format:
@@ -179,13 +189,14 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
                 
             % rescale:
             if strcmpi(fmt,'log10u16')
-                int_max = 2^16 - 1;
+                int_max = 2^16 - 2;
                 c_data = uint16(round(int_max*(c_data - qu_min)/(qu_max - qu_min)));
+                c_data(is_max) = uint16(2^16 - 1);
             else
-                int_max = 2^8 - 1;
+                int_max = 2^8 - 2;
                 c_data = uint8(round(int_max*(c_data - qu_min)/(qu_max - qu_min)));
+                c_data(is_max) = uint8(2^8 - 1);
             end
-            
         
             % store data and scaling factors:
             qu_rec.data = c_data;
@@ -196,7 +207,8 @@ function [lut] = make_lut(res,p,vr,ax,qu,fmt)
             % try to decode back to original values:
             b_data = 10.^(double(c_data)*qu_rec.data_scale + qu_rec.data_offset);
             % calculate deviation of the compressed data:
-            dev = max(abs(b_data./data-1)(:));
+            dev = abs(b_data./data-1);
+            dev = max(dev(:));
             
         else
             % --- real format:
