@@ -8,7 +8,7 @@ cd(mfld);
 addpath([mfld filesep() 'var']);
 
 fs = 10000;
-N = 20000;
+N = 10000;
 M = 10;
 
 f0(1,:) = logspace(log10(50.3),log10(2000.3),M);
@@ -22,7 +22,7 @@ fm = 0.0;
 
 f_env = 0.5*[0:N]/N*fs;
 g_env = 1*cos(f_env/fs*2*pi*fm);
-p_env = linspace(0.0*pi,0.01*pi,N+1);
+p_env = linspace(0.0*pi,0.001*pi,N+1);
 
 f_gain = interp1(f_env,g_env,f0,'pchip');
 f_phi  = interp1(f_env,p_env,f0,'pchip');
@@ -36,7 +36,8 @@ um = f_gain.*A.*sin(t.*2.*pi.*f0 + phi + f_phi);
 um = dc + sum(um,2);
 
 
-fft_size = 4096;
+%fft_size = 4096;
+fft_size = 2^nextpow2(N/4)
 
 fft_half = fft_size/2;
 
@@ -44,6 +45,8 @@ fr = [0:fft_half]/fft_size;
 ff = [];
 fg = interp1(f_env,g_env,fr*fs,'pchip');
 fp = interp1(f_env,p_env,fr*fs,'pchip');
+NF = round(fft_size*0.01)
+fp(end-NF:end) = fp(end-NF:end).*(0.5 + 0.5*cos([0:NF]/NF*pi));
 ff(:,1) = fg.*exp(j*fp);
 ff(fft_half+2:fft_size) = conj(ff(end-1:-1:2));
 ff(1) = fg(1);
@@ -77,8 +80,9 @@ S = numel(uf);
 % harmonic frequencies DFT bins:
 fid = round(f0/fs*S) + 1;
 
-At(fid)
-Ac(fid) 
+dA = At(fid)./Ac(fid) - 1
+dA = mod(phc(fid) - pht(fid) + pi,2*pi)-pi
+ 
 
 
 
