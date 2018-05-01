@@ -65,7 +65,7 @@ dS_est = (dPn0.^2 + dS_est_b.^2 + dS_est_a.^2).^0.5;
 dI_est = (dIn0.^2 + dI_est_b.^2).^0.5;
 
 
-if false
+if true
 
     figure;
     semilogy(dP(:))
@@ -98,91 +98,20 @@ if false
 
 end
 
+return
 
 
 % --- generate LUT A ---
 
 % extract data to be saved to the LUT:
-dP_lut = dP(:,:,:,:,:)(:);
-dS_lut = dS(:,:,:,:,:)(:);
-dI_lut = dI(:,:,:,:,:)(:);
+dP_lut = dP(1,:,:,:,:)(:);
+dS_lut = dS(1,:,:,:,:)(:);
+dI_lut = dI(1,:,:,:,:)(:);
 
 % build data vector:
 eres = {struct()};
 for c = 1:numel(dP_lut)    
-    eres{c} = struct('dP',dP_lut(c),'dS',dS_lut(c));
-end
-
-% build list of parameter values (axes of dependence): 
-ep = struct();
-ep.ab_rat = p.ab_rat;
-ep.f0_per = p.f0_per;
-ep.fs_rat = p.fs_rat;
-ep.s_amp = p.s_amp;
-ep.s_freq = p.s_freq;
-
-% -- build data vector descriptor
-% axes of data vector:
-evr.names = {'ab_rat','f0_per','fs_rat','s_amp','s_freq'};
-% axes sizes:
-evr.par_n = [numel(ep.ab_rat) numel(ep.f0_per) numel(ep.fs_rat) numel(ep.s_amp) numel(ep.s_freq)]; 
-
-
-% define axes limits and behaviour:
-ax = struct();
-ax.ab_rat.min_lim = 'const';
-ax.ab_rat.min_ovr = 0.99;
-ax.ab_rat.max_lim = 'const';
-ax.ab_rat.max_ovr = 1.05;
-ax.ab_rat.scale = 'log';
-ax.f0_per.min_lim = 'error';
-ax.f0_per.min_ovr = 0.99;
-ax.f0_per.max_lim = 'const';
-ax.f0_per.max_ovr = 1.05;
-ax.f0_per.scale = 'log';
-ax.fs_rat.min_lim = 'const';
-ax.fs_rat.min_ovr = 0.99;
-ax.fs_rat.max_lim = 'const';
-ax.fs_rat.max_ovr = 1.05;
-ax.fs_rat.scale = 'log';
-ax.s_amp.min_lim = 'const';
-ax.s_amp.min_ovr = 0.99;
-ax.s_amp.max_lim = 'const';
-ax.s_amp.max_ovr = 1.05;
-ax.s_amp.scale = 'log';
-ax.s_freq.min_lim = 'const';
-ax.s_freq.min_ovr = 0.99;
-ax.s_freq.max_lim = 'const';
-ax.s_freq.max_ovr = 1.05;
-ax.s_freq.scale = 'log';
-
-% define quantities interpolation behaviour:
-qu = struct();
-qu.dP.mult = 1.0; 
-qu.dP.scale = 'log';
-qu.dS.mult = 1.0; 
-qu.dS.scale = 'log';
-
-disp('Building LUT A...');
-
-lut.lut_PS = make_lut(eres,ep,evr,ax,qu);
-
-% store reference a/b ratio:
-lut.ref_ab_rat = ab_rat(1);
-lut.info = 'Uncertainty LUT for windowed rms level and power algorithm - spurr effect. Made for blackmanharris() window.';
-
-
-% --- generate LUT B ---
-
-% extract data to be saved to the LUT:
-dP_lut = max(dP,[],1)(:);
-dS_lut = max(dS,[],1)(:);
-dI_lut = max(dI,[],1)(:);
-
-% build data vector:
-eres = {struct()};
-for c = 1:numel(dP_lut)    
-    eres{c} = struct('dI',dI_lut(c));
+    eres{c} = struct('dP',dP_lut(c),'dS',dS_lut(c),'dI',dI_lut(c));
 end
 
 % build list of parameter values (axes of dependence): 
@@ -224,12 +153,78 @@ ax.s_freq.scale = 'log';
 
 % define quantities interpolation behaviour:
 qu = struct();
+qu.dP.mult = 1.0; 
+qu.dP.scale = 'log';
+qu.dS.mult = 1.0; 
+qu.dS.scale = 'log';
+qu.dI.mult = 1.0; 
+qu.dI.scale = 'log';
+
+disp('Building LUT A...');
+
+lut.lut_ref = make_lut(eres,ep,evr,ax,qu);
+
+% store reference a/b ratio:
+lut.ref_ab_rat = ab_rat(1);
+lut.info = 'Uncertainty LUT for windowed rms level and power algorithm - spurr effect. Made for blackmanharris() window.';
+
+
+% --- generate LUT B ---
+
+% extract data to be saved to the LUT:
+dP_lut = dP(end,:,:,1,:)(:);
+dS_lut = dS(end,:,:,1,:)(:);
+dI_lut = dI(end,:,:,1,:)(:);
+
+% build data vector:
+eres = {struct()};
+for c = 1:numel(dP_lut)    
+    eres{c} = struct('dP',dP_lut(c),'dS',dS_lut(c),'dI',dI_lut(c));
+end
+
+% build list of parameter values (axes of dependence): 
+ep = struct();
+ep.f0_per = p.f0_per;
+ep.fs_rat = p.fs_rat;
+ep.s_freq = p.s_freq;
+
+% -- build data vector descriptor
+% axes of data vector:
+evr.names = {'f0_per','fs_rat','s_freq'};
+% axes sizes:
+evr.par_n = [numel(ep.f0_per) numel(ep.fs_rat) numel(ep.s_freq)]; 
+
+
+% define axes limits and behaviour:
+ax = struct();
+ax.f0_per.min_lim = 'error';
+ax.f0_per.min_ovr = 0.99;
+ax.f0_per.max_lim = 'const';
+ax.f0_per.max_ovr = 1.05;
+ax.f0_per.scale = 'log';
+ax.fs_rat.min_lim = 'const';
+ax.fs_rat.min_ovr = 0.99;
+ax.fs_rat.max_lim = 'const';
+ax.fs_rat.max_ovr = 1.05;
+ax.fs_rat.scale = 'log';
+ax.s_freq.min_lim = 'const';
+ax.s_freq.min_ovr = 0.99;
+ax.s_freq.max_lim = 'const';
+ax.s_freq.max_ovr = 1.05;
+ax.s_freq.scale = 'log';
+
+% define quantities interpolation behaviour:
+qu = struct();
+qu.dP.mult = 1.0; 
+qu.dP.scale = 'log';
+qu.dS.mult = 1.0; 
+qu.dS.scale = 'log';
 qu.dI.mult = 1.0; 
 qu.dI.scale = 'log';
 
 disp('Building LUT B...');
 
-lut.lut_I = make_lut(eres,ep,evr,ax,qu);
+lut.lut_min = make_lut(eres,ep,evr,ax,qu);
 
 
 disp('Saving LUT...');
@@ -247,7 +242,7 @@ save('wrms_spurr_unc.lut','-v7','lut')
 
 disp('Testing LUT...');
 
-tic;
+tic
 dPr_list = [];
 dPx_list = [];
 dIr_list = [];
@@ -268,13 +263,13 @@ for k = 1:100
     a_spurr = p.s_amp(a_spurr_id);
     
     % sampling parameters:
-    f0_per_id = round(rand*(numel(lut.lut_PS.ax.f0_per.values)-1)+1);
-    f0_per = lut.lut_PS.ax.f0_per.values(f0_per_id);
-    fs_rat_id = round(rand*(numel(lut.lut_PS.ax.fs_rat.values)-1)+1);
-    fs_rat = lut.lut_PS.ax.fs_rat.values(fs_rat_id);
+    f0_per_id = round(rand*(numel(lut.ax.f0_per.values)-1)+1);
+    f0_per = lut.ax.f0_per.values(f0_per_id);
+    fs_rat_id = round(rand*(numel(lut.ax.fs_rat.values)-1)+1);
+    fs_rat = lut.ax.fs_rat.values(fs_rat_id);
     
     % eval uncertainty:
-    [dPx,dSx,dIx] = wrms_unc_spurr(lut, amp_a,amp_b, f_spurr,a_spurr,0, f0_per,fs_rat);
+    [dPx,dSx,dIx] = wrms_unc_spurr(lut, amp_a,amp_b, f_spurr,a_spurr, f0_per,fs_rat);
     
     % get reference value from source data:
     dPr = dP(ab_rat_id,f0_per_id,fs_rat_id,a_spurr_id,f_spurr_id);

@@ -14,7 +14,7 @@ addpath([mfld filesep() 'var']);
 % it uses N-dim data, reduces the dims to minimum needed by defining empirical relations...
 % result is relatively small LUT and few equations
 
-%load('wrms_single_tone_bits.matsc','res','vr','p','s')
+load('wrms_single_tone_bits.matsc','res','vr','p','s')
 
 rr = [res{:}];
 
