@@ -15,22 +15,25 @@ addpath([mfld filesep() 'var']);
 %  note: 10 means it will simulate random sample counts from (2^9)+1 to 2^10 
 s.N_pow = 12;[10:2:20];
 % harmonic frequency range relative to fs:
-s.f0_rat_min_bin = 6;
-s.f0_rat_max = 0.1;[0.02 0.05 0.1 0.2 0.3 0.4 0.45];
+s.f0_rat_min_bin = 10;
+s.f0_rat_max = 0.45;[0.02 0.05 0.1 0.2 0.3 0.4 0.45];
+s.f0_rat = 0.2;
+s.f0_rat_rnd = 0.1;
 % harmonic amplitude:
 s.f0_amp = 1;
 % randomize phase range [+- rad]:
 s.f0_phi_rnd = pi;
+s.f0_phi = 0;
 % filter max phase [+- rad]:
 s.ff_max_phi = 0.1;[0 logspace(-6,-0,10)]*pi;
 % filter max real amp dev [+- V/V]:
-s.ff_max_amp = 1e-6;[0 logspace(-6,log10(0.5),10)]*pi;
+s.ff_max_amp = 100000e-6;[0 logspace(-6,log10(0.5),10)]*pi;
 % bits count per f0_amp:
-s.bits = 24;[16:2:24];
+s.bits = 32;[16:2:24];
 % rms noise:
-s.rms_noise = 1e-6;
+s.rms_noise = 0e-6;
 % tests per setting:
-s.cycles = 1;
+s.cycles = 100;
 
 proc_FFTF(s)
 

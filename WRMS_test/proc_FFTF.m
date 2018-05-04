@@ -11,14 +11,14 @@ function [r] = proc_WRMS(p)
     
         % random size from 2^(p.N_pow-1)+1 to 2^(p.N_pow) 
         N = 2^p.N_pow - round((2^(p.N_pow-1) - 1)*rand(1));
+        N = floor(N/2)*2;
         
         % size of the FFT filter:
         %   note: this must match the algorithm
         fft_size = 2^nextpow2(N/4);
         
         % filter resampling mode:
-        %  note: we will generate the filter at its expected size, so we can use 'nearest'
-        i_mode = 'nearest'; 
+        i_mode = 'pchip'; 
 
         % sampling rate:
         fs = 1;
@@ -33,9 +33,21 @@ function [r] = proc_WRMS(p)
         elseif f0_rat_max < f0_rat_min
             f0_rat_max = 1.05*f0_rat_min;
         end
+        
+        % select harmonic frequency:
+        if isfield(p,'f0_rat') && p.f0_rat
+            % fixed frequency mode:            
+            rel_f = p.f0_rat*(1 + p.f0_rat_rnd*(2*rand-1));
+            rel_f = max(rel_f,0);
+            rel_f = min(rel_f,f0_rat_max);            
+            f0_rat_max = 1;            
+        else
+            % randomized frequency mode:
+            rel_f = rand(1);
+        end
                 
         % harmonic frequency:
-        f0 = (f0_rat_max - f0_rat_min)*rand(1) + f0_rat_min;
+        f0 = (f0_rat_max - f0_rat_min)*rel_f + f0_rat_min;
         
         %f0/fs
         
@@ -43,7 +55,7 @@ function [r] = proc_WRMS(p)
         a0 = p.f0_amp;
         
         % harmonic phase angle:
-        ph = p.f0_phi_rnd*(2*rand(1) - 1);
+        ph = p.f0_phi + p.f0_phi_rnd*(2*rand(1) - 1);
                 
         % 2*pi*time vector:
         tw = reshape([0:N-1]/fs*2*pi,[N 1]);
@@ -56,7 +68,7 @@ function [r] = proc_WRMS(p)
         u = u + randn(N,1)*p.rms_noise;
         
         % add random offset at the bitres level:
-        u = u + randn(1).*a0.*2^-(p.bits-1);
+        u = u + (2*rand(1)-1).*a0.*2^-(p.bits-1);
         
         % round to ADC resolution:
         u = round(u/a0*2^(p.bits-1))/2^(p.bits-1)*a0;
@@ -68,24 +80,40 @@ function [r] = proc_WRMS(p)
         fgain = ones(size(ff));
         
         % generate random phase gradient starting from 0:
-        fphi_pwr = rand(1)*(3 - 0.1) + 0.1;
+        %  ####fixed complex results of negative slopes
+        fphi_pwr = rand(1)*(2.5 - 0.5) + 0.5;
         fphi_max = p.ff_max_phi*(2*rand(1) - 1);
-        fphi = linspace(0,fphi_max,numel(ff)).^fphi_pwr/(fphi_max^(fphi_pwr-1));
+        fphi = sign(fphi_max)*linspace(0,abs(fphi_max),numel(ff)).^fphi_pwr/(abs(fphi_max)^(fphi_pwr-1));
         if any(isnan(fphi))
             fphi = zeros(size(fphi));
         end
         
         % generate random amplitude gradient starting from 0:
-        famp_pwr = rand(1)*(3 - 0.1) + 0.1;
+        %  ####fixed complex results of negative slopes
+        famp_pwr = rand(1)*(2.5 - 0.5) + 0.5;
         famp_max = p.ff_max_amp*(2*rand(1) - 1);
-        fgain = 1 + linspace(0,famp_max,numel(ff)).^famp_pwr/(famp_max^(famp_pwr - 1));
+        fgain = 1 + sign(famp_max)*linspace(0,abs(famp_max),numel(ff)).^famp_pwr/(abs(famp_max)^(famp_pwr - 1));
         if any(isnan(fgain))
             fgain = ones(size(fgain));
         end
+        
+        
+        % make some window for analysis:
+        w = flattop(N,8)(:);
+        %  get window scaling factor:
+        w_gain = mean(w);
+        %  get window rms:
+        w_rms = mean(w.^2).^0.5;
+        
+        % estiamte DC level:
+        dc = mean(u.*w)/w_gain;
+        
+        % remove DC offset:
+        u = u - dc;        
                         
         
-        % apply filter:        
-        [uf,a,b] = td_fft_filter(u, fs, fft_size, ff,fgain,fphi, i_mode);
+        % apply filter:
+        [uf,a,b, fff,ffg,ffp] = td_fft_filter(u, fs, fft_size, ff,fgain,fphi, i_mode);
         
         % make filtered and original waveform have identical length:
         u = u(a:b);
@@ -99,36 +127,35 @@ function [r] = proc_WRMS(p)
         w_gain = mean(w);
         %  get window rms:
         w_rms = mean(w.^2).^0.5;
+            
         
         % apply window to both signals:
         uc = [u uf].*w;
         
         
         % do FFT:
-        U = fft(uc)(1:round(M/2),:);
+        U = fft(uc)(1:round(M/2),:)/M*2/w_gain;
         fh = [0:size(U,1)-1]'/M*fs;
         
         % fundamental component DFT bin:
         fid = round(f0/fs*M + 1);
         
-        % reference vector:
-        Ur = U(fid,1);
+        % filtered:     
+        Uf = U(:,2);
         
-        % mathing frequency of the DFT bin:
-        f0b = (fid - 1)/M*fs;
-        
+        % reference:
+        Ur = U(:,1);
+                
         % phase correction value:
-        fphib = interp1(ff,fphi,f0b,'pchip','extrap');
+        fphib = interp1(fff,ffp,fh,'pchip','extrap');
         
         % amplitude correction value:
-        fampb = interp1(ff,fgain,f0b,'pchip','extrap');
+        fampb = interp1(fff,ffg,fh,'pchip','extrap');
         
         % apply filter correction to the reference signal:
         Ur = Ur.*fampb.*exp(j*fphib);       
-        
-        % filtered vector:     
-        Uf = U(fid,2);
-        
+               
+                        
         
         % window size:
         w_size = 11;
@@ -144,29 +171,29 @@ function [r] = proc_WRMS(p)
         msk = msk(msk <= N & msk > 1);
         
         % estimate noise levels for the removed harmonics components:
-        Urns = interp1(fh(msk),abs(U(msk,1)),fh,'nearest','extrap');
-        Ufns = interp1(fh(msk),abs(U(msk,2)),fh,'nearest','extrap');
+        Urns = interp1(fh(msk),abs(Uf(msk)),fh,'nearest','extrap');
+        Ufns = interp1(fh(msk),abs(Ur(msk)),fh,'nearest','extrap');
         
         % estimate RMS noise from windowed spectrum:
-        Ur_noise = sum(0.5*Urns.^2)^0.5/w_rms*w_gain;
-        Uf_noise = sum(0.5*Ufns.^2)^0.5/w_rms*w_gain;
+        Ur_noise = sum(0.5*abs(Urns(w_size:end)).^2)^0.5/w_rms*w_gain;
+        Uf_noise = sum(0.5*abs(Ufns(w_size:end)).^2)^0.5/w_rms*w_gain;
+        
         
         % estimate RMS noise from windowed spectrum:
-        Ur_rms = sum(0.5*abs(U(3:end,1)).^2)^0.5/w_rms*w_gain;
-        Uf_rms = sum(0.5*abs(U(3:end,2)).^2)^0.5/w_rms*w_gain;
+        Ur_rms = sum(0.5*abs(Uf(w_size:end)).^2)^0.5/w_rms*w_gain;
+        Uf_rms = sum(0.5*abs(Ur(w_size:end)).^2)^0.5/w_rms*w_gain;
         
         
-        %loglog(fh,abs(U(:,1)))
-        %hold on;
-        %loglog(fh,abs(U(:,2)))
-        %hold off;
-               
+%         loglog(fh,abs(Uf))
+%         hold on;
+%         loglog(fh,abs(Ur),'r')
+%         hold off;
         
         % amplitude deviation:
-        dA(k) = abs(Ur)/abs(Uf) - 1;
+        dA(k) = abs(Ur(fid))/abs(Uf(fid)) - 1;
         
         % phase deviation:
-        dP(k) = mod(arg(Ur) - arg(Uf) + pi, 2*pi) - pi;
+        dP(k) = mod(arg(Ur(fid)) - arg(Uf(fid)) + pi, 2*pi) - pi;
         
         % noise gain:
         dN(k) = (Uf_noise/Ur_noise) - 1;              
@@ -178,10 +205,18 @@ function [r] = proc_WRMS(p)
     endfor
     
     % detect worst cases:
-    r.dA = single(max(abs(dA)));
-    r.dP = single(max(abs(dP)));
-    r.dN = single(max(abs(dN)));
-    r.dR = single(max(abs(dR)));
+    r.wA = single(max(abs(dA)));
+    r.wP = single(max(abs(dP)));
+    r.wN = single(max(abs(dN)));
+    r.wR = single(max(abs(dR)));
+    
+    % estimate 95% uncertainty:
+    if numel(dA)
+        r.uA = single(est_scovint(dA,0));
+        r.uP = single(est_scovint(dP,0));
+        r.uN = single(est_scovint(dN,0));
+        r.uR = single(est_scovint(dR,0));
+    end
     
 endfunction
 

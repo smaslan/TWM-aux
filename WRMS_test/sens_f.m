@@ -13,20 +13,23 @@ addpath([mfld filesep() 'var']);
 
 % samples count (2^N):
 %  note: 10 means it will simulate random sample counts from (2^9)+1 to 2^10 
-s.N_pow = [10:2:20];
+s.N_pow = [10:1:20];
 % harmonic frequency range relative to fs:
-s.f0_rat_min_bin = 6;
-s.f0_rat_max = [0.02 0.05 0.1 0.2 0.3 0.4 0.45];
+s.f0_rat_min_bin = 8;
+s.f0_rat_max = 0.45;[0.02 0.05 0.1 0.2 0.35 0.45];
+s.f0_rat = logspace(log10(0.001),log10(0.45),17);
+s.f0_rat_rnd = 0.05;
 % harmonic amplitude:
 s.f0_amp = 1;
 % randomize phase range [+- rad]:
+s.f0_phi = 0;
 s.f0_phi_rnd = pi;
 % filter max phase [+- rad]:
-s.ff_max_phi = [0 logspace(-6,-0,10)]*pi;
+s.ff_max_phi = [0 logspace(-6,-0,7)]*pi;
 % filter max real amp dev [+- V/V]:
-s.ff_max_amp = [0 logspace(-6,log10(0.5),10)]*pi;
+s.ff_max_amp = [0 logspace(-6,log10(0.5),7)]*pi;
 % bits count per f0_amp:
-s.bits = [24 32];
+s.bits = 24;[24 32];
 % rms noise:
 s.rms_noise = [0 logspace(-7,-3,5)];
 % tests per setting:
@@ -41,7 +44,7 @@ p_list = var_get_all_fast(p,vr,5000,1);
 
 % --- multicore setup ---
 % multicore cores count
-mc_setup.cores = 576/2;
+mc_setup.cores = round(576*2/3);
 % multicore method {'cellfun','parcellfun','multicore'}
 mc_setup.method = 'multicore';
 % multicore options: jobs grouping for 'parcellfun' 
@@ -68,7 +71,7 @@ res = runmulticore(mc_setup.method,@proc_FFTF,p_list,mc_setup.cores,mc_setup.sha
 vr.res_n = length(res);
 
 
-save('fftf_test.matsc','-v7','res','vr','p','s')
+save('fftf_test_3.matsc','-v7','res','vr','p','s')
 
 
 

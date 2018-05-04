@@ -48,6 +48,8 @@ function [r] = proc_WRMS(p)
         
         % calculate inverse RMS of the window (needed for scaling of the result): 
         W = mean(w.^2)^-0.5; 
+        % calculate window gain 
+        Wg = mean(w);
                         
         
         for s = 1:p.spurr_mode+1
@@ -85,7 +87,8 @@ function [r] = proc_WRMS(p)
             uw = u.*w;
             
             % estimate DC offset:
-            dc = mean(uw,1).*W^2;
+            %  ###fixed!!! rerun simulation
+            dc = mean(uw,1)/Wg;
             
             % remove DC offset:
             u = u - dc;
