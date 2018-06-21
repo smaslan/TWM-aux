@@ -14,7 +14,7 @@ function [r] = proc_MODTDPS(p)
     dfm  = [];
     dA0  = [];
     dmod = [];
-    for r = 1:p.R
+    for r = 1:p.R_max
     
         % sampling rate [Hz]:
         fs = p.fsf0_rat + rand(1) - 0.5;
@@ -32,7 +32,7 @@ function [r] = proc_MODTDPS(p)
         A0 = 1;            
         
         % modulating amplitude:        
-        Am = min(max(A0*p.modd*(1 + 0.05*(rand(1)-0.5)),0),0.99);
+        Am = min(max(A0*p.modd*(1 + 0.05*(rand(1)-0.5)),0.01),0.99);
         
         % pk-pk amplitude:
         App = A0*(1 + p.modd);
@@ -79,43 +79,47 @@ function [r] = proc_MODTDPS(p)
         % evaluate algortithm:
         try 
             [me, dcx,f0x,A0x, fmx,Amx,phmx] = mod_tdps(fs, u, wshape, p.comp_err);
-            
+                                   
             modx = Amx/A0x;            
             modd = Am/A0;
             
-            dofs(end+1) = dcx - ofs;
-            df0(end+1)  = f0x/f0 - 1;
-            dfm(end+1)  = fmx/fm - 1;
-            dA0(end+1)  = A0x/A0 - 1;
-            dmod(end+1) = modx - modd;
+            if ~isnan(f0x) && ~isnan(fmx) && ~isnan(modx) && ~isnan(modd) && ~isinf(f0x) && ~isinf(fmx) && ~isinf(modx) && ~isinf(modd)            
+                dofs(end+1) = dcx - ofs;
+                df0(end+1)  = f0x/f0 - 1;
+                dfm(end+1)  = fmx/fm - 1;
+                dA0(end+1)  = A0x/A0 - 1;
+                dmod(end+1) = modx - modd;
+            end
+        end
+        
+        if numel(dmod) > p.R
+            break;
         end
         
     end
         
     r = struct();
     % return mc lists:
-    r.l_dofs = dofs;
-    r.l_df0 = df0;
-    r.l_dfm = dfm;
-    r.l_dA0 = dA0;
-    r.l_dmod = dmod;
+    r.l_dofs = single(dofs);
+    r.l_df0 = single(df0);
+    r.l_dfm = single(dfm);
+    r.l_dA0 = single(dA0);
+    r.l_dmod = single(dmod);
     r.num = numel(dofs);
     
     if r.num > 2
-        r.s_dofs = est_scovint(dofs,0);
-        r.s_df0 = est_scovint(df0,0);
-        r.s_dfm = est_scovint(dfm,0);
-        r.s_dA0 = est_scovint(dA0,0);
-        r.s_dmod = est_scovint(dmod,0);    
+        r.s_dofs = single(est_scovint(dofs,0));
+        r.s_df0 = single(est_scovint(df0,0));
+        r.s_dfm = single(est_scovint(dfm,0));
+        r.s_dA0 = single(est_scovint(dA0,0));
+        r.s_dmod = single(est_scovint(dmod,0));    
     end
     
-    r.m_dofs = mean(dofs);
-    r.m_df0 = mean(df0);
-    r.m_dfm = mean(dfm);
-    r.m_dA0 = mean(dA0);
-    r.m_dmod = mean(dmod);
-    
-    
+    r.m_dofs = single(mean(dofs));
+    r.m_df0 = single(mean(df0));
+    r.m_dfm = single(mean(dfm));
+    r.m_dA0 = single(mean(dA0));
+    r.m_dmod = single(mean(dmod));
 
 end
 

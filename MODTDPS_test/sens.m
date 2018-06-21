@@ -13,7 +13,7 @@ id = 0;
 
 id++;
 cfg{id}.name = 'Sine - corrections';
-cfg{id}.file = 'sine_corr.matsc';
+cfg{id}.file = 'sine_corr_v2.matsc';
 cfg{id}.is_rect = 0;
 cfg{id}.comp_err = 1;
 
@@ -64,19 +64,18 @@ for k = 1:numel(cfg)
      
     % mcc:
     s.R = 1000;
+    s.R_max = 10000;
         
     
     % --- initialize simulator/generate jobs ---
     [vr,p] = var_init(s);
     p_list = var_get_all_fast(p,vr,5000,1);
     
-    return
-    
     fprintf('Count: %d\n',numel(p_list));
     
     % --- multicore setup ---
     % multicore cores count
-    mc_setup.cores = 200;
+    mc_setup.cores = 300;
     % multicore method {'cellfun','parcellfun','multicore'}
     mc_setup.method = 'multicore';
     % multicore options: jobs grouping for 'parcellfun' 
@@ -95,7 +94,7 @@ for k = 1:numel(cfg)
     vr.res_n = length(res);
     
     
-%    save(cfg{k}.file,'-v6','res','vr','p','s');
+    save(cfg{k}.file,'-v6','res','vr','p','s');
 
 end
 

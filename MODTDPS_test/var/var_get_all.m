@@ -1,10 +1,16 @@
-% Get all paramter combinations.
-
 function [outp] = var_get_all(par,vr,step,verbose)
+% Original slow version of the 'var_get_all_fast()' function.
+% Behaviour is the same, so see help of 'var_get_all_fast()'.
+%
+% License:
+% --------
+% This is part of VAR library for automatic multidim. variation of simulation parameters.
+% (c) 2018, Stanislav Maslan, s.maslan@seznam.cz
+% The script is distributed under MIT license, https://opensource.org/licenses/MIT 
 
   if(verbose)
     printf('Generating parameter combinations ... \r');
-  endif
+  end
   
   % get first combination
   [p,vr] = var_get_next(par,vr);
@@ -24,16 +30,16 @@ function [outp] = var_get_all(par,vr,step,verbose)
       
       if(verbose)
         printf('Generating parameter combinations ... %3.0f%%  \r',100*outp(k-1)._vpid_/outp(k-1)._vpcnt_);
-      endif          
-    endwhile
+      end       
+    end
           
-  endif
+  end
   
   if(verbose)
     printf('\n');
-  endif
+  end
     
   % convert to cells
   outp = num2cell(outp);
 
-endfunction
+end
