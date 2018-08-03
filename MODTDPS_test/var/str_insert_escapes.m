@@ -1,6 +1,5 @@
-%% 'Escapification' of formatting characters for GNU Plot title strings.
-
 function [str] = str_insert_escapes(str)
+% 'Escapification' of formatting characters for Latex style strings.
 
   %% add escape characters for '_'
   tid = find(str=='_');

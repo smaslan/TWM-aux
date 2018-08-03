@@ -16,4 +16,4 @@ function [len,par_val] = var_get_par_by_name(vr,par,name)
   % return vector of parameters
   par_val = getfield(par,vr.names{pid});
 
-endfunction
+end

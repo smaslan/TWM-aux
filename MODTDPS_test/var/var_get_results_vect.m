@@ -54,12 +54,12 @@ function [r,v,par_val,par_name,info_str] = var_get_results_vect(res,par,vr,varar
         fid = find(strcmp(vr.names,varargin{k}),1,'first');
         if(~numel(fid))
           % parameter not found
-          error(['Parameter "' inputname(1) '.' varargin{k} '" not found!']);          
+          error(['Parameter "' inputname(2) '.' varargin{k} '" not found!']);          
         end
         
         if(varargin{k+1}<1 || varargin{k+1}>vr.par_n(fid))
           % parameter index out of range
-          error(['Parameter "' inputname(1) '.' varargin{k} '" index out of range (' int2str(varargin{k+1}) ' of ' int2str(vr.par_n(fid)) ')!']);          
+          error(['Parameter "' inputname(2) '.' varargin{k} '" index out of range (' int2str(varargin{k+1}) ' of ' int2str(vr.par_n(fid)) ')!']);          
         end
         
         % filter multiplier

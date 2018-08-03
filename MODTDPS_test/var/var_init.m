@@ -31,7 +31,7 @@ function [vr,par] = var_init(par)
   
   % assume char strings are scalars:
   is_charz = cellfun(@ischar,cellfun(@getfield,repmat({par},length(vr.names),1),vr.names,'UniformOutput',false));  
-  vr.par_n(~is_charz) = 1;
+  vr.par_n(~~is_charz) = 1;
     
   % get total variations count
   vr.var_n = prod(vr.par_n);

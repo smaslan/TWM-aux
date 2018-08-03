@@ -7,7 +7,7 @@ cd(mfld);
 addpath([mfld filesep() 'var']);
 
 try
-    load('sine_ncorr.matsc','-v6','res','vr','p','s');
+    load('rect_ncorr_v3.matsc','-v6','res','vr','p','s');
 end
 
 names = fieldnames(res{1});
@@ -23,12 +23,12 @@ for k = 1:numel(res)
             rr{k} = setfield(rr{k},names{n},data);
         end
     end
-    k    
+    %k    
 end
 
-save('sine_ncorr_min.matsc','-v7','rr','vr','p','s');
+save('rect_ncorr_v3_min.matsc','-v7','rr','vr','p','s');
 
-save('sine_ncorr_sgl.matsc','-v6','res','vr','p','s');
+%save('sine_ncorr_sgl.matsc','-v6','res','vr','p','s');
 
 
 

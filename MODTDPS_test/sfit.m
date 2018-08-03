@@ -5,22 +5,30 @@ cd(mfld);
 % add variable variate lib: 
 addpath([mfld filesep() 'var']);
 
+
+
 disp('Loading data...');
 
 % load results:
-%load('sine_corr_min.matsc','-mat');
+%res = load('sine_corr_v2_min.matsc','-mat','rr');
+res = load('sine_ncorr_v3_min.matsc','-mat');
+p = res.p;
+vr = res.vr;
+res = res.rr;
 
 disp('Preprocessing data...');
 
 % merge deviations and uncertainties:
-% rr = {struct()};
-% for k = 1:numel(res)   
-%    %rr{k}.dofs = res{k}.s_dofs;
-%    rr{k}.df0 = res{k}.s_df0;
-%    rr{k}.dfm = res{k}.s_dfm;
-%    rr{k}.dA0 = res{k}.s_dA0;
-%    rr{k}.dmod = res{k}.s_dmod;   
-% end
+rr = {struct()};
+for k = 1:numel(res)   
+   %rr{k}.dofs = res{k}.s_dofs;
+   rr{k}.df0 = res{k}.s_df0;
+   rr{k}.dfm = res{k}.s_dfm;
+   rr{k}.dA0 = res{k}.s_dA0;
+   rr{k}.dmod = res{k}.s_dmod;   
+end
+
+
 
 disp('Building LUT...');
 
@@ -92,7 +100,7 @@ lut = make_lut(rr,p,vr,ax,qu);
 
 disp('Saving LUT...');
 
-save('sine_corr_unc.lut','-v7','lut')
+save('sine_ncorr_unc.lut','-v7','lut')
 
 disp('Testing LUT...');
 

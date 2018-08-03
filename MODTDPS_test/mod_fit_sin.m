@@ -66,7 +66,7 @@ function [me, dc,f0,A0, fm,Am,phm, u_A0,u_Am] = mod_fit_sin(fs,u,wshape)
     else
         % --- RECTANGULAR WAVE:
         
-        if f0/fm > 4
+        if f0/fm > 3.9
             % suitable modulation freq.:
             
             % modulation signal phase:

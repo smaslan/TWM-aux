@@ -11,23 +11,26 @@ warning('off');
 
 id = 0;
 
-id++;
-cfg{id}.name = 'Sine - corrections';
-cfg{id}.file = 'sine_corr_v2.matsc';
-cfg{id}.is_rect = 0;
-cfg{id}.comp_err = 1;
+%id++;
+%cfg{id}.name = 'Sine - corrections';
+%cfg{id}.file = 'sine_corr_v3.matsc';
+%cfg{id}.is_rect = 0;
+%cfg{id}.comp_err = 1;
+%cfg{id}.max_fm = 0.33;
 
-% id++;
-% cfg{id}.name = 'Sine - no corrections';
-% cfg{id}.file = 'sine_ncorr.matsc';
-% cfg{id}.is_rect = 0;
-% cfg{id}.comp_err = 0;
-% 
-% id++;
-% cfg{id}.name = 'Rectangular - no corrections';
-% cfg{id}.file = 'rect_ncorr.matsc';
-% cfg{id}.is_rect = 1;
-% cfg{id}.comp_err = 0;
+id++;
+cfg{id}.name = 'Sine - no corrections';
+cfg{id}.file = 'sine_ncorr_v3.matsc';
+cfg{id}.is_rect = 0;
+cfg{id}.comp_err = 0;
+cfg{id}.max_fm = 0.33;
+ 
+id++;
+cfg{id}.name = 'Rectangular - no corrections';
+cfg{id}.file = 'rect_ncorr_v3.matsc';
+cfg{id}.is_rect = 1;
+cfg{id}.comp_err = 0;
+cfg{id}.max_fm = 0.25;
 
 
 for k = 1:numel(cfg)
@@ -40,11 +43,11 @@ for k = 1:numel(cfg)
 
     s = struct();
     % ADC bit resolution of the pk-pk amplitude:
-    s.bits = unique(round(logspace(log10(4),log10(24),6)));
+    s.bits = unique(round(logspace(log10(6),log10(24),6)));
     % sampling time rms jitter [s]:
     s.jitt = logspace(-9,-2,5);
     % modulate/carrier freq ratio:
-    s.fmf0_rat = logspace(log10(0.01),log10(0.33),8);
+    s.fmf0_rat = logspace(log10(0.01),log10(cfg{k}.max_fm),8);
     % modulating depth:
     s.modd = logspace(log10(0.01),log10(0.99),8);
     % sampling rate to carrier freq ratio:
@@ -71,11 +74,12 @@ for k = 1:numel(cfg)
     [vr,p] = var_init(s);
     p_list = var_get_all_fast(p,vr,5000,1);
     
+    
     fprintf('Count: %d\n',numel(p_list));
     
     % --- multicore setup ---
     % multicore cores count
-    mc_setup.cores = 300;
+    mc_setup.cores = 576/2;
     % multicore method {'cellfun','parcellfun','multicore'}
     mc_setup.method = 'multicore';
     % multicore options: jobs grouping for 'parcellfun' 
@@ -93,8 +97,24 @@ for k = 1:numel(cfg)
     % update result count in jobs list
     vr.res_n = length(res);
     
+    save(cfg{k}.file,'-v6','vr','p','res');
     
-    save(cfg{k}.file,'-v6','res','vr','p','s');
+    %rr = {};
+    %for k = 1:numel(res)    
+    %    rr{end+1} = struct();
+    %    for n = 1:numel(names)
+    %        data = getfield(res{k},names{n});
+    %        if ~isscalar(data)
+    %            res{k} = setfield(res{k},names{n},single(data));
+    %        else
+    %            rr{k} = setfield(rr{k},names{n},data);
+    %        end
+    %    end            
+    %end
+    
+    %save(['min_' cfg{k}.file],'-v6','vr','p','rr');
+
+    %clear rr;
 
 end
 
